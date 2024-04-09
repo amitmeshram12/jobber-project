@@ -1,0 +1,93 @@
+version: '3.9'
+
+services:
+
+  # Elasticsearch Docker Images: https://www.docker.elastic.co/
+  redis:
+    container_name: redis_container
+    image: redis:alpine
+    restart: always
+    ports:
+      - '6379:6379'
+    command: redis-server --loglevel warning
+    volumes:
+      - ./docker-volumes/cache:/data
+  mongodb:
+    container_name: mongodb_container
+    image: mongo:latest
+    restart: always
+    ports:
+      - '27017:27017'
+    volumes:
+      - ./docker-volumes/data:/data/db
+  mysql:
+    image: mysql:latest
+    container_name: mysql_container
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      - MYSQL_USER=jobber
+      - MYSQL_DATABASE=jobber_auth
+      - MYSQL_ROOT_PASSWORD=api
+      - MYSQL_PASSWORD=api
+    ports:
+      - '3306:3306'   
+    volumes:
+      - ./docker-volumes/mysql:/var/lib/mysql
+  postgres:
+    container_name: postgres_container
+    image: postgres:latest
+    restart: always
+    environment:
+      - POSTGRES_USER=jobber
+      - POSTGRES_DB=jobber_reviews
+      - POSTGRES_PASSWORD=api
+    ports:
+      - '5432:5432'
+    volumes:
+      - ./docker-volumes/postgres:/var/lib/postgressql
+  rabbitmq:
+    container_name: rabbitmq_container
+    image: rabbitmq:3.13-rc-management-alpine
+    restart: always
+      # AMPQ Protocol port
+    ports:  
+      - '5672:5672'
+      # Management UI
+      - '15672:15672'
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
+    container_name: elasticsearch_container
+    restart: always
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200
+      - 9300:9300
+    networks:
+      - elastic
+
+  kibana:
+    container_name: kibana_container
+    restart: always
+    image: docker.elastic.co/kibana/kibana:8.12.2
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch_container:9200
+    ports:
+      - 5601:5601
+    depends_on:
+      - elasticsearch
+    networks:
+      - elastic
+networks:
+  elastic:
+
+volumes:
+  es_data: {}
